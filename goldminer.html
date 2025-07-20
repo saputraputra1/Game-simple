@@ -1,0 +1,1949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Miner Multiplayer</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FFD700;
+            --secondary: #1E1E1E;
+            --accent: #8B4513;
+            --dark: #121212;
+            --light: #F5F5F5;
+            --success: #4CAF50;
+            --danger: #E53935;
+            --info: #2196F3;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: url('https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--light);
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: -1;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            max-width: 900px;
+            width: 90%;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .container::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #FFD700, #FF8C00, #FFD700);
+            background-size: 200%;
+            z-index: -1;
+            border-radius: 18px;
+            animation: borderGlow 3s linear infinite;
+            opacity: 0.7;
+        }
+
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            margin-bottom: 30px;
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+            letter-spacing: 1px;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 3px;
+        }
+
+        h2 {
+            font-family: 'Playfair Display', serif;
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .game-board {
+            display: grid;
+            gap: 8px;
+            margin: 30px auto;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .cell {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #5D2906, #8B4513);
+            border: 2px solid #3A1B04;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 1/1;
+        }
+
+        .cell:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .cell:active {
+            transform: translateY(1px);
+        }
+
+        .cell.revealed {
+            background: linear-gradient(145deg, #D2B48C, #F5DEB3);
+            transform: rotateY(180deg);
+        }
+
+        .cell.gold {
+            background: radial-gradient(circle, #FFD700, #FFA500);
+            animation: goldGlow 2s infinite alternate;
+        }
+
+        @keyframes goldGlow {
+            from { box-shadow: 0 0 15px #FFD700; }
+            to { box-shadow: 0 0 25px #FFD700, 0 0 35px #FFD700; }
+        }
+
+        .cell.bomb {
+            background: radial-gradient(circle, #FF0000, #8B0000);
+            animation: bombPulse 0.75s infinite alternate;
+        }
+
+        @keyframes bombPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .player {
+            padding: 15px 25px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            min-width: 220px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .player.active {
+            background: rgba(0, 100, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 100, 255, 0.5);
+            transform: scale(1.05);
+            border: 1px solid rgba(0, 100, 255, 0.5);
+        }
+
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(145deg, #1E1E1E, #121212);
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            animation: modalFadeIn 0.5s;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to bottom right,
+                transparent 0%,
+                transparent 45%,
+                rgba(255, 215, 0, 0.1) 50%,
+                transparent 55%,
+                transparent 100%
+            );
+            animation: shine 3s infinite;
+            z-index: -1;
+        }
+
+        @keyframes shine {
+            0% { transform: rotate(0deg) translate(-25%, -25%); }
+            100% { transform: rotate(360deg) translate(-25%, -25%); }
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        button {
+            background: linear-gradient(145deg, #FFD700, #FFA500);
+            color: var(--dark);
+            border: none;
+            padding: 12px 25px;
+            margin: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        button:hover {
+            background: linear-gradient(145deg, #FFC000, #FF8C00);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.5);
+        }
+
+        button:hover::before {
+            left: 100%;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        input {
+            padding: 12px 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: none;
+            width: 80%;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .invite-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px dashed rgba(255, 215, 0, 0.3);
+        }
+
+        .game-id {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 15px 0;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            animation: confettiFall 5s linear forwards;
+            z-index: 10;
+        }
+
+        @keyframes confettiFall {
+            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        .gold-count {
+            font-size: 24px;
+            color: var(--primary);
+            margin: 15px 0;
+            font-weight: 600;
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+
+        .miner-icon {
+            font-size: 24px;
+            margin-right: 8px;
+            color: var(--primary);
+        }
+
+        .turn-indicator {
+            font-size: 22px;
+            margin: 20px 0;
+            color: var(--primary);
+            animation: blink 1.5s infinite;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .sound-toggle {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 10;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+            font-size: 20px;
+        }
+
+        .sound-toggle:hover {
+            transform: scale(1.1);
+            background: rgba(255, 215, 0, 0.2);
+        }
+
+        .username-input {
+            margin: 25px 0;
+        }
+
+        .username-display {
+            font-weight: bold;
+            color: var(--primary);
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+
+        .explosion {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,200,0,0.8) 0%, rgba(255,100,0,0.6) 40%, rgba(255,0,0,0) 70%);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: explosion 0.5s forwards;
+            z-index: 5;
+        }
+
+        @keyframes explosion {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        .firework {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            box-shadow: 0 0 15px 8px rgba(255,255,255,0.8);
+            animation: firework 1s forwards;
+            z-index: 20;
+        }
+
+        @keyframes firework {
+            0% { transform: translate(0, 0); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)); opacity: 0; }
+        }
+
+        .score-change {
+            position: absolute;
+            font-size: 26px;
+            font-weight: bold;
+            animation: scoreFade 1s forwards;
+            z-index: 10;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+        }
+
+        @keyframes scoreFade {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-50px); opacity: 0; }
+        }
+
+        .negative-score {
+            color: var(--danger);
+        }
+
+        .positive-score {
+            color: var(--primary);
+        }
+
+        .victory-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, rgba(255,215,0,0.1) 50%, rgba(0,0,0,0) 100%);
+            z-index: 15;
+            pointer-events: none;
+            animation: victoryPulse 2s infinite;
+            display: none;
+        }
+
+        @keyframes victoryPulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.5; }
+        }
+
+        .defeat-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255,0,0,0.3) 0%, rgba(255,0,0,0.1) 50%, rgba(0,0,0,0) 100%);
+            z-index: 15;
+            pointer-events: none;
+            animation: defeatPulse 2s infinite;
+            display: none;
+        }
+
+        @keyframes defeatPulse {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.5; }
+            100% { opacity: 0.3; }
+        }
+
+        .counters {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .counter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .avatar-upload {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .avatar-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary);
+            margin-bottom: 15px;
+            background-color: #333;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+        }
+
+        .avatar-preview:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .avatar-upload-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s;
+        }
+
+        .avatar-upload-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--primary);
+        }
+
+        .announcement {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 25px 50px;
+            border-radius: 12px;
+            border: 2px solid var(--primary);
+            z-index: 30;
+            animation: announcementFade 3s forwards;
+            display: none;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes announcementFade {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
+        .game-mode-selector {
+            margin: 30px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .game-mode-btn {
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 18px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-mode-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 215, 0, 0.1),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .game-mode-btn:hover {
+            background: rgba(0, 0, 0, 0.5);
+            transform: translateY(-3px);
+            border-color: rgba(255, 215, 0, 0.3);
+        }
+
+        .game-mode-btn:hover::before {
+            left: 100%;
+        }
+
+        .game-mode-btn.selected {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+        }
+
+        .game-settings {
+            margin: 30px 0;
+            display: none;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 215, 0, 0.2);
+        }
+
+        .game-settings.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 15px 0;
+        }
+
+        .setting-label {
+            font-size: 18px;
+            margin-right: 15px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .setting-input {
+            width: 80px;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .joined-players-title {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .joined-player {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        .joined-player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--primary);
+        }
+
+        .main-menu-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .main-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+                width: 95%;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .player {
+                min-width: 100%;
+            }
+
+            .game-mode-btn {
+                padding: 15px;
+                font-size: 16px;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sound-toggle" id="soundToggle">🔊</div>
+    <div class="victory-screen" id="victoryScreen"></div>
+    <div class="defeat-screen" id="defeatScreen"></div>
+    <div class="announcement" id="announcement"></div>
+    
+    <div class="container" id="mainMenu">
+        <h1>Gold Miner Multiplayer</h1>
+        <div class="username-input">
+            <input type="text" id="usernameInput" placeholder="Enter your username" maxlength="10">
+        </div>
+        <div class="avatar-upload">
+            <img id="avatarPreview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile Picture">
+            <label class="avatar-upload-btn">
+                Choose Profile Picture
+                <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+            </label>
+        </div>
+        
+        <div class="game-mode-selector">
+            <div class="game-mode-btn" data-mode="single">Single Player (vs COM) - 8x8 Grid</div>
+            <div class="game-mode-btn" data-mode="multi2">2 Players - 10x10 Grid</div>
+            <div class="game-mode-btn" data-mode="multi3">3 Players - 13x13 Grid</div>
+            <div class="game-mode-btn" data-mode="multi4">4 Players - 15x15 Grid</div>
+            <div class="game-mode-btn" data-mode="custom">Custom Game (5+ Players) - 25x25 Grid</div>
+        </div>
+        
+        <div class="game-settings" id="customSettings">
+            <div class="setting-row">
+                <span class="setting-label">Gold Count:</span>
+                <input type="number" id="goldCountInput" class="setting-input" min="10" max="200" value="30">
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Bomb Count:</span>
+                <input type="number" id="bombCountInput" class="setting-input" min="10" max="200" value="30">
+            </div>
+        </div>
+        
+        <button id="createGameBtn">Create New Game</button>
+        <div class="invite-section">
+            <p>Or join an existing game:</p>
+            <input type="text" id="gameIdInput" placeholder="Enter Game ID">
+            <button id="joinGameBtn">Join Game</button>
+        </div>
+    </div>
+
+    <div class="container" id="gameContainer" style="display: none;">
+        <h1>Gold Miner</h1>
+        <div class="player-info" id="playerInfo">
+            <!-- Player elements will be added dynamically -->
+        </div>
+        <div class="counters">
+            <div class="counter">
+                <span>💰: <span id="goldCollected">0</span>/<span id="totalGold">15</span></span>
+            </div>
+            <div class="counter">
+                <span>💣: <span id="bombsHit">0</span>/<span id="totalBombs">15</span></span>
+            </div>
+        </div>
+        <div class="turn-indicator" id="turnIndicator">Your turn!</div>
+        <div class="gold-count">Gold collected this turn: <span id="currentGold">0</span></div>
+        <div class="game-board" id="gameBoard"></div>
+        <div class="game-id">Game ID: <span id="displayGameId"></span></div>
+        <button id="quitGameBtn">Quit Game</button>
+    </div>
+
+    <div class="modal" id="waitingModal">
+        <div class="modal-content">
+            <h2>Waiting for Players</h2>
+            <p>Share this Game ID with your friends:</p>
+            <div class="game-id" id="waitingGameId"></div>
+            <p>Waiting for other players to join...</p>
+            <div class="loading-spinner"></div>
+            <div id="joinedPlayersList"></div>
+            <button id="cancelWaitingBtn">Cancel</button>
+            <button id="startGameBtn" style="display: none;">Start Game</button>
+        </div>
+    </div>
+
+    <div class="modal" id="gameOverModal">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            <p id="gameOverMessage"></p>
+            <div class="counters">
+                <div class="counter">
+                    <span>💰 Collected: <span id="finalGoldCollected">0</span></span>
+                </div>
+                <div class="counter">
+                    <span>💣 Hit: <span id="finalBombsHit">0</span></span>
+                </div>
+            </div>
+            <button id="playAgainBtn">Play Again</button>
+            <button id="mainMenuBtn" class="main-menu-btn">Main Menu</button>
+        </div>
+    </div>
+
+    <audio id="clickSound" src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" preload="auto"></audio>
+    <audio id="goldSound" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" preload="auto"></audio>
+    <audio id="bombSound" src="https://assets.mixkit.co/sfx/preview/mixkit-explosion-impact-1684.mp3" preload="auto"></audio>
+    <audio id="winSound" src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" preload="auto"></audio>
+    <audio id="loseSound" src="https://assets.mixkit.co/sfx/preview/mixkit-retro-arcade-lose-2027.mp3" preload="auto"></audio>
+    <audio id="turnSound" src="https://assets.mixkit.co/sfx/preview/mixkit-game-show-suspense-waiting-668.mp3" preload="auto"></audio>
+    <audio id="backgroundMusic" loop src="https://assets.mixkit.co/music/preview/mixkit-adventure-game-theme-287.mp3" preload="auto"></audio>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCixqJ_eDJ0vscvsI_Z1Th10FEfKi0hdx8",
+            authDomain: "online--suit.firebaseapp.com",
+            databaseURL: "https://online--suit-default-rtdb.firebaseio.com",
+            projectId: "online--suit",
+            storageBucket: "online--suit.firebasestorage.app",
+            messagingSenderId: "463840835705",
+            appId: "1:463840835705:web:f490fd49851c0afb8dfca8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Game variables
+        let gameId;
+        let playerId;
+        let currentPlayerTurn;
+        let gameBoard = [];
+        let revealedCells = [];
+        let goldCount = 0;
+        let playerScores = {};
+        let isSoundOn = true;
+        let isMusicOn = true;
+        let username = '';
+        let playerNames = {};
+        let playerAvatars = {};
+        let hasPlayedThisTurn = false;
+        let GOLD_COUNT = 15;
+        let BOMB_COUNT = 15;
+        let goldCollected = 0;
+        let bombsHit = 0;
+        let myAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+        let gameMode = 'multi2'; // Default to 2 player mode
+        let gridSize = 10;
+        let playerCount = 2;
+        let isHost = false;
+        let comPlayers = [];
+        let comThinking = false;
+
+        // DOM elements
+        const mainMenu = document.getElementById('mainMenu');
+        const gameContainer = document.getElementById('gameContainer');
+        const createGameBtn = document.getElementById('createGameBtn');
+        const joinGameBtn = document.getElementById('joinGameBtn');
+        const gameIdInput = document.getElementById('gameIdInput');
+        const usernameInput = document.getElementById('usernameInput');
+        const waitingModal = document.getElementById('waitingModal');
+        const waitingGameId = document.getElementById('waitingGameId');
+        const cancelWaitingBtn = document.getElementById('cancelWaitingBtn');
+        const gameBoardElement = document.getElementById('gameBoard');
+        const displayGameId = document.getElementById('displayGameId');
+        const playerInfoElement = document.getElementById('playerInfo');
+        const currentGoldElement = document.getElementById('currentGold');
+        const goldCollectedElement = document.getElementById('goldCollected');
+        const totalGoldElement = document.getElementById('totalGold');
+        const bombsHitElement = document.getElementById('bombsHit');
+        const totalBombsElement = document.getElementById('totalBombs');
+        const finalGoldCollectedElement = document.getElementById('finalGoldCollected');
+        const finalBombsHitElement = document.getElementById('finalBombsHit');
+        const turnIndicator = document.getElementById('turnIndicator');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const gameOverMessage = document.getElementById('gameOverMessage');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const mainMenuBtn = document.getElementById('mainMenuBtn');
+        const quitGameBtn = document.getElementById('quitGameBtn');
+        const soundToggle = document.getElementById('soundToggle');
+        const victoryScreen = document.getElementById('victoryScreen');
+        const defeatScreen = document.getElementById('defeatScreen');
+        const announcement = document.getElementById('announcement');
+        const avatarInput = document.getElementById('avatarInput');
+        const avatarPreview = document.getElementById('avatarPreview');
+        const gameModeBtns = document.querySelectorAll('.game-mode-btn');
+        const customSettings = document.getElementById('customSettings');
+        const goldCountInput = document.getElementById('goldCountInput');
+        const bombCountInput = document.getElementById('bombCountInput');
+        const joinedPlayersList = document.getElementById('joinedPlayersList');
+        const startGameBtn = document.getElementById('startGameBtn');
+
+        // Audio elements
+        const clickSound = document.getElementById('clickSound');
+        const goldSound = document.getElementById('goldSound');
+        const bombSound = document.getElementById('bombSound');
+        const winSound = document.getElementById('winSound');
+        const loseSound = document.getElementById('loseSound');
+        const turnSound = document.getElementById('turnSound');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+
+        // Handle avatar upload
+        avatarInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    avatarPreview.src = event.target.result;
+                    myAvatar = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Game mode selection
+        gameModeBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                gameModeBtns.forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+                gameMode = this.dataset.mode;
+                
+                // Show custom settings only for custom mode
+                if (gameMode === 'custom') {
+                    customSettings.classList.add('active');
+                } else {
+                    customSettings.classList.remove('active');
+                }
+                
+                // Set grid size and player count based on mode
+                switch(gameMode) {
+                    case 'single':
+                        gridSize = 8;
+                        playerCount = 1;
+                        break;
+                    case 'multi2':
+                        gridSize = 10;
+                        playerCount = 2;
+                        break;
+                    case 'multi3':
+                        gridSize = 13;
+                        playerCount = 3;
+                        break;
+                    case 'multi4':
+                        gridSize = 15;
+                        playerCount = 4;
+                        break;
+                    case 'custom':
+                        gridSize = 25;
+                        playerCount = 5; // Minimum for custom
+                        break;
+                }
+            });
+        });
+
+        // Show announcement
+        function showAnnouncement(message) {
+            announcement.textContent = message;
+            announcement.style.display = 'block';
+            
+            if (isSoundOn) {
+                turnSound.currentTime = 0;
+                turnSound.play();
+            }
+            
+            setTimeout(() => {
+                announcement.style.display = 'none';
+            }, 3000);
+        }
+
+        // Initialize game board
+        function initializeBoard() {
+            gameBoard = [];
+            revealedCells = Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+            goldCount = 0;
+            goldCollected = 0;
+            bombsHit = 0;
+            currentGoldElement.textContent = '0';
+            goldCollectedElement.textContent = '0';
+            bombsHitElement.textContent = '0';
+            totalGoldElement.textContent = GOLD_COUNT;
+            totalBombsElement.textContent = BOMB_COUNT;
+            hasPlayedThisTurn = false;
+            
+            // Create grid with gold and bombs randomly placed
+            for (let i = 0; i < gridSize; i++) {
+                gameBoard[i] = [];
+                for (let j = 0; j < gridSize; j++) {
+                    gameBoard[i][j] = 'empty';
+                }
+            }
+            
+            // Place gold
+            let goldPlaced = 0;
+            while (goldPlaced < GOLD_COUNT) {
+                const x = Math.floor(Math.random() * gridSize);
+                const y = Math.floor(Math.random() * gridSize);
+                if (gameBoard[x][y] === 'empty') {
+                    gameBoard[x][y] = 'gold';
+                    goldPlaced++;
+                }
+            }
+            
+            // Place bombs
+            let bombsPlaced = 0;
+            while (bombsPlaced < BOMB_COUNT) {
+                const x = Math.floor(Math.random() * gridSize);
+                const y = Math.floor(Math.random() * gridSize);
+                if (gameBoard[x][y] === 'empty') {
+                    gameBoard[x][y] = 'bomb';
+                    bombsPlaced++;
+                }
+            }
+            
+            // Set up player scores
+            playerScores = {};
+            const playerIds = Object.keys(playerNames);
+            playerIds.forEach(id => {
+                playerScores[id] = 0;
+            });
+            
+            // Add COM players for single player mode
+            if (gameMode === 'single') {
+                comPlayers = ['com1', 'com2', 'com3'];
+                comPlayers.forEach(comId => {
+                    playerNames[comId] = `COM ${comId.slice(-1)}`;
+                    playerAvatars[comId] = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+                    playerScores[comId] = 0;
+                });
+            }
+            
+            // Render the board
+            renderBoard();
+            renderPlayerInfo();
+        }
+
+        // Render the game board
+        function renderBoard() {
+            gameBoardElement.innerHTML = '';
+            gameBoardElement.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            gameBoardElement.style.width = `${gridSize * 50}px`;
+            gameBoardElement.style.height = `${gridSize * 50}px`;
+            
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    
+                    if (revealedCells[i][j]) {
+                        cell.classList.add('revealed');
+                        if (gameBoard[i][j] === 'gold') {
+                            cell.classList.add('gold');
+                            cell.innerHTML = '💰';
+                        } else if (gameBoard[i][j] === 'bomb') {
+                            cell.classList.add('bomb');
+                            cell.innerHTML = '💣';
+                        }
+                    }
+                    
+                    cell.addEventListener('click', () => handleCellClick(i, j));
+                    gameBoardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // Render player info
+        function renderPlayerInfo() {
+            playerInfoElement.innerHTML = '';
+            
+            Object.keys(playerNames).forEach(playerId => {
+                const playerElement = document.createElement('div');
+                playerElement.className = 'player';
+                playerElement.id = playerId;
+                
+                const avatar = document.createElement('img');
+                avatar.className = 'player-avatar';
+                avatar.src = playerAvatars[playerId] || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+                avatar.alt = playerNames[playerId];
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'miner-icon';
+                nameSpan.textContent = '⛏️';
+                
+                const nameText = document.createElement('span');
+                nameText.id = `${playerId}Name`;
+                nameText.textContent = playerNames[playerId];
+                
+                const scoreText = document.createElement('span');
+                scoreText.id = `${playerId}Score`;
+                scoreText.textContent = playerScores[playerId] || 0;
+                
+                playerElement.appendChild(avatar);
+                playerElement.appendChild(nameSpan);
+                playerElement.appendChild(nameText);
+                playerElement.appendChild(document.createTextNode(': '));
+                playerElement.appendChild(scoreText);
+                
+                playerInfoElement.appendChild(playerElement);
+                
+                // Highlight active player
+                if (currentPlayerTurn === playerId) {
+                    playerElement.classList.add('active');
+                }
+            });
+        }
+
+        // Handle cell click
+        function handleCellClick(row, col) {
+            if (!revealedCells[row][col] && currentPlayerTurn === playerId && !hasPlayedThisTurn && !comThinking) {
+                revealedCells[row][col] = true;
+                hasPlayedThisTurn = true;
+                
+                // Play sound
+                if (isSoundOn) {
+                    clickSound.currentTime = 0;
+                    clickSound.play();
+                }
+                
+                // Get the cell element
+                const cell = document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`);
+                
+                // Update game state
+                if (gameBoard[row][col] === 'gold') {
+                    goldCount++;
+                    goldCollected++;
+                    currentGoldElement.textContent = goldCount;
+                    goldCollectedElement.textContent = goldCollected;
+                    
+                    if (isSoundOn) {
+                        goldSound.currentTime = 0;
+                        goldSound.play();
+                    }
+                    
+                    // Add visual effect
+                    cell.classList.add('gold');
+                    cell.innerHTML = '💰';
+                    
+                    // Show score gain animation
+                    showScoreAnimation(cell, '+1', 'positive-score');
+                    
+                    // Create confetti effect
+                    createConfetti(cell);
+                } else if (gameBoard[row][col] === 'bomb') {
+                    bombsHit++;
+                    bombsHitElement.textContent = bombsHit;
+                    
+                    if (isSoundOn) {
+                        bombSound.currentTime = 0;
+                        bombSound.play();
+                    }
+                    
+                    // Add visual effect
+                    cell.classList.add('bomb');
+                    cell.innerHTML = '💣';
+                    
+                    // Create explosion effect
+                    createExplosion(cell);
+                    
+                    // Deduct points (minimum 0)
+                    playerScores[playerId] = Math.max(0, playerScores[playerId] - 2);
+                    const playerElement = document.getElementById(playerId);
+                    showScoreAnimation(playerElement, '-2', 'negative-score');
+                    
+                    // End turn immediately if bomb is clicked
+                    setTimeout(() => {
+                        endTurn();
+                    }, 1000);
+                    return;
+                }
+                
+                // Update the board in Firebase (if multiplayer)
+                if (gameMode !== 'single') {
+                    updateGameState();
+                }
+                
+                // Check if all gold is collected
+                checkGameEnd();
+                
+                // End turn after a short delay
+                setTimeout(() => {
+                    if (gameBoard[row][col] !== 'bomb') {
+                        endTurn();
+                    }
+                }, 1000);
+            }
+        }
+
+        // COM player makes a move
+        function comMakeMove(comId) {
+            if (currentPlayerTurn !== comId || comThinking) return;
+            
+            comThinking = true;
+            
+            // Simple AI - random move
+            setTimeout(() => {
+                let row, col;
+                let attempts = 0;
+                
+                // Find an unrevealed cell
+                do {
+                    row = Math.floor(Math.random() * gridSize);
+                    col = Math.floor(Math.random() * gridSize);
+                    attempts++;
+                    
+                    // If too many attempts, just find any unrevealed cell
+                    if (attempts > 100) {
+                        for (let i = 0; i < gridSize; i++) {
+                            for (let j = 0; j < gridSize; j++) {
+                                if (!revealedCells[i][j]) {
+                                    row = i;
+                                    col = j;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } while (revealedCells[row][col] && attempts <= 100);
+                
+                // Simulate click
+                handleCellClick(row, col);
+                comThinking = false;
+            }, 1000 + Math.random() * 2000); // Random delay to make it feel more natural
+        }
+
+        // Show score change animation
+        function showScoreAnimation(element, text, className) {
+            const scoreAnim = document.createElement('div');
+            scoreAnim.className = `score-change ${className}`;
+            scoreAnim.textContent = text;
+            scoreAnim.style.left = `${element.offsetLeft + element.offsetWidth / 2}px`;
+            scoreAnim.style.top = `${element.offsetTop}px`;
+            document.body.appendChild(scoreAnim);
+            
+            setTimeout(() => {
+                scoreAnim.remove();
+            }, 1000);
+        }
+
+        // Create explosion effect
+        function createExplosion(element) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = `${element.offsetLeft}px`;
+            explosion.style.top = `${element.offsetTop}px`;
+            document.body.appendChild(explosion);
+            
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+        }
+
+        // Create confetti effect
+        function createConfetti(element) {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            const rect = element.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            for (let i = 0; i < 20; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.left = `${centerX}px`;
+                confetti.style.top = `${centerY}px`;
+                confetti.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                document.body.appendChild(confetti);
+                
+                // Remove confetti after animation
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+
+        // Create victory fireworks
+        function createFireworks() {
+            for (let i = 0; i < 50; i++) {
+                const firework = document.createElement('div');
+                firework.className = 'firework';
+                firework.style.left = `${Math.random() * 100}vw`;
+                firework.style.top = `${Math.random() * 100}vh`;
+                firework.style.backgroundColor = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                firework.style.setProperty('--tx', `${(Math.random() - 0.5) * 200}px`);
+                firework.style.setProperty('--ty', `${(Math.random() - 0.5) * 200}px`);
+                document.body.appendChild(firework);
+                
+                setTimeout(() => {
+                    firework.remove();
+                }, 1000);
+            }
+        }
+
+        // End current player's turn
+        function endTurn() {
+            if (gameMode === 'single') {
+                // Single player mode - rotate between player and COM players
+                const playerIds = Object.keys(playerNames);
+                const currentIndex = playerIds.indexOf(currentPlayerTurn);
+                const nextIndex = (currentIndex + 1) % playerIds.length;
+                currentPlayerTurn = playerIds[nextIndex];
+                
+                showAnnouncement(`${playerNames[currentPlayerTurn]}'s turn!`);
+                
+                // If it's a COM's turn, make them move
+                if (currentPlayerTurn.startsWith('com')) {
+                    setTimeout(() => {
+                        comMakeMove(currentPlayerTurn);
+                    }, 1000);
+                }
+            } else {
+                // Multiplayer mode - rotate between real players
+                const playerIds = Object.keys(playerNames).filter(id => !id.startsWith('com'));
+                const currentIndex = playerIds.indexOf(currentPlayerTurn);
+                const nextIndex = (currentIndex + 1) % playerIds.length;
+                currentPlayerTurn = playerIds[nextIndex];
+                
+                showAnnouncement(`${playerNames[currentPlayerTurn]}'s turn!`);
+            }
+            
+            goldCount = 0;
+            currentGoldElement.textContent = '0';
+            hasPlayedThisTurn = false;
+            
+            // Update UI
+            renderPlayerInfo();
+            
+            if (gameMode !== 'single') {
+                updateGameState();
+            }
+        }
+
+        // Check if game has ended
+        function checkGameEnd() {
+            let allGoldCollected = true;
+            let goldRemaining = 0;
+            
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    if (gameBoard[i][j] === 'gold' && !revealedCells[i][j]) {
+                        allGoldCollected = false;
+                        goldRemaining++;
+                    }
+                }
+            }
+            
+            if (allGoldCollected) {
+                endGame();
+            }
+        }
+
+        // End the game
+        function endGame() {
+            // Determine winner(s)
+            let maxScore = -1;
+            let winners = [];
+            
+            Object.keys(playerScores).forEach(playerId => {
+                if (playerScores[playerId] > maxScore) {
+                    maxScore = playerScores[playerId];
+                    winners = [playerId];
+                } else if (playerScores[playerId] === maxScore) {
+                    winners.push(playerId);
+                }
+            });
+            
+            let winnerText;
+            if (winners.length === 1) {
+                winnerText = `${playerNames[winners[0]]} wins!`;
+            } else {
+                winnerText = `It's a tie between ${winners.map(id => playerNames[id]).join(' and ')}!`;
+            }
+            
+            gameOverMessage.textContent = `Game Over! ${winnerText}`;
+            finalGoldCollectedElement.textContent = goldCollected;
+            finalBombsHitElement.textContent = bombsHit;
+            showGameOverModal();
+            
+            if (isSoundOn) {
+                if (winners.includes(playerId)) {
+                    winSound.play();
+                    victoryScreen.style.display = 'block';
+                    createFireworks();
+                } else {
+                    loseSound.play();
+                    defeatScreen.style.display = 'block';
+                }
+            }
+            
+            // Remove game from Firebase if multiplayer
+            if (gameMode !== 'single' && isHost) {
+                database.ref(`games/${gameId}`).remove();
+            }
+        }
+
+        // Update game state in Firebase
+        function updateGameState() {
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            if (playerId === currentPlayerTurn) {
+                playerScores[playerId] += goldCount;
+            }
+            
+            gameRef.update({
+                board: gameBoard,
+                revealed: revealedCells,
+                currentPlayerTurn: currentPlayerTurn,
+                playerScores: playerScores,
+                goldCount: goldCount,
+                playerNames: playerNames,
+                playerAvatars: playerAvatars,
+                hasPlayedThisTurn: hasPlayedThisTurn,
+                goldCollected: goldCollected,
+                bombsHit: bombsHit
+            });
+        }
+
+        // Show waiting modal
+        function showWaitingModal() {
+            waitingModal.style.display = 'flex';
+            waitingGameId.textContent = gameId;
+            
+            // Start music
+            if (isMusicOn) {
+                backgroundMusic.volume = 0.3;
+                backgroundMusic.play();
+            }
+        }
+
+        // Hide waiting modal
+        function hideWaitingModal() {
+            waitingModal.style.display = 'none';
+        }
+
+        // Show game over modal
+        function showGameOverModal() {
+            gameOverModal.style.display = 'flex';
+        }
+
+        // Hide game over modal
+        function hideGameOverModal() {
+            gameOverModal.style.display = 'none';
+            victoryScreen.style.display = 'none';
+            defeatScreen.style.display = 'none';
+        }
+
+        // Generate a random game ID
+        function generateGameId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // Create a new game
+        function createGame() {
+            username = usernameInput.value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            // Set gold and bomb counts for custom mode
+            if (gameMode === 'custom') {
+                GOLD_COUNT = parseInt(goldCountInput.value) || 30;
+                BOMB_COUNT = parseInt(bombCountInput.value) || 30;
+            } else {
+                // Default counts based on grid size
+                GOLD_COUNT = Math.floor(gridSize * gridSize * 0.15);
+                BOMB_COUNT = Math.floor(gridSize * gridSize * 0.15);
+            }
+            
+            gameId = generateGameId();
+            isHost = true;
+            
+            // Set player info
+            playerId = 'player1';
+            currentPlayerTurn = 'player1';
+            playerNames = {
+                [playerId]: username
+            };
+            playerAvatars = {
+                [playerId]: myAvatar
+            };
+            playerScores = {
+                [playerId]: 0
+            };
+            
+            displayGameId.textContent = gameId;
+            
+            if (gameMode === 'single') {
+                // Single player mode - initialize immediately
+                initializeBoard();
+                mainMenu.style.display = 'none';
+                gameContainer.style.display = 'block';
+                showAnnouncement(`${username}'s turn first!`);
+                
+                // Start music
+                if (isMusicOn) {
+                    backgroundMusic.volume = 0.3;
+                    backgroundMusic.play();
+                }
+            } else {
+                // Multiplayer mode - show waiting room
+                showWaitingModal();
+                
+                // Create game in Firebase
+                const gameRef = database.ref(`games/${gameId}`);
+                gameRef.set({
+                    board: [],
+                    revealed: [],
+                    players: {
+                        [playerId]: true
+                    },
+                    playerCount: playerCount,
+                    gridSize: gridSize,
+                    goldCount: GOLD_COUNT,
+                    bombCount: BOMB_COUNT,
+                    currentPlayerTurn: currentPlayerTurn,
+                    playerScores: playerScores,
+                    playerNames: playerNames,
+                    playerAvatars: playerAvatars,
+                    hasPlayedThisTurn: hasPlayedThisTurn,
+                    goldCollected: goldCollected,
+                    bombsHit: bombsHit,
+                    gameMode: gameMode,
+                    gameStarted: false
+                });
+                
+                // Show start button when enough players join
+                updateJoinedPlayersList();
+                
+                // Listen for players joining
+                gameRef.child('players').on('value', (snapshot) => {
+                    const players = snapshot.val() || {};
+                    updateJoinedPlayersList();
+                    
+                    // Show start button if host and enough players joined
+                    if (isHost && Object.keys(players).length >= playerCount) {
+                        startGameBtn.style.display = 'block';
+                    } else {
+                        startGameBtn.style.display = 'none';
+                    }
+                });
+                
+                // Listen for game start
+                gameRef.child('gameStarted').on('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        // Game started, initialize board
+                        gameRef.once('value').then((snapshot) => {
+                            const data = snapshot.val();
+                            initializeFromFirebase(data);
+                            hideWaitingModal();
+                            mainMenu.style.display = 'none';
+                            gameContainer.style.display = 'block';
+                            
+                            // Show announcement
+                            const firstPlayerName = playerNames[data.currentPlayerTurn] || 'Player 1';
+                            showAnnouncement(`${firstPlayerName}'s turn first!`);
+                            
+                            // Listen for game state changes
+                            setupGameListeners();
+                        });
+                    }
+                });
+            }
+        }
+
+        // Update the joined players list in waiting room
+        function updateJoinedPlayersList() {
+            const gameRef = database.ref(`games/${gameId}/players`);
+            gameRef.once('value').then((snapshot) => {
+                const players = snapshot.val() || {};
+                joinedPlayersList.innerHTML = '<h3 class="joined-players-title">Joined Players:</h3>';
+                
+                Object.keys(players).forEach(playerId => {
+                    const playerDiv = document.createElement('div');
+                    playerDiv.className = 'joined-player';
+                    
+                    const avatar = document.createElement('img');
+                    avatar.className = 'joined-player-avatar';
+                    avatar.src = playerAvatars[playerId] || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+                    
+                    const name = document.createElement('span');
+                    name.textContent = playerNames[playerId] || playerId;
+                    
+                    playerDiv.appendChild(avatar);
+                    playerDiv.appendChild(name);
+                    joinedPlayersList.appendChild(playerDiv);
+                });
+            });
+        }
+
+        // Start the game (host only)
+        function startGame() {
+            if (!isHost) return;
+            
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            // Initialize the board
+            initializeBoard();
+            
+            // Update Firebase with initial game state
+            gameRef.update({
+                board: gameBoard,
+                revealed: revealedCells,
+                goldCount: GOLD_COUNT,
+                bombCount: BOMB_COUNT,
+                goldCollected: goldCollected,
+                bombsHit: bombsHit,
+                gameStarted: true
+            });
+        }
+
+        // Initialize game from Firebase data
+        function initializeFromFirebase(data) {
+            gameBoard = data.board || [];
+            revealedCells = data.revealed || Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+            currentPlayerTurn = data.currentPlayerTurn || 'player1';
+            playerScores = data.playerScores || {};
+            playerNames = data.playerNames || {};
+            playerAvatars = data.playerAvatars || {};
+            hasPlayedThisTurn = data.hasPlayedThisTurn || false;
+            goldCollected = data.goldCollected || 0;
+            bombsHit = data.bombsHit || 0;
+            GOLD_COUNT = data.goldCount || 15;
+            BOMB_COUNT = data.bombCount || 15;
+            gridSize = data.gridSize || 10;
+            
+            // Update UI
+            playerScores[playerId] = playerScores[playerId] || 0;
+            currentGoldElement.textContent = goldCount;
+            goldCollectedElement.textContent = goldCollected;
+            bombsHitElement.textContent = bombsHit;
+            totalGoldElement.textContent = GOLD_COUNT;
+            totalBombsElement.textContent = BOMB_COUNT;
+            
+            if (currentPlayerTurn === playerId) {
+                turnIndicator.textContent = 'Your turn! Click a cell';
+            } else {
+                turnIndicator.textContent = 'Waiting for opponent...';
+            }
+            
+            // Render the board and player info
+            renderBoard();
+            renderPlayerInfo();
+        }
+
+        // Join an existing game
+        function joinGame() {
+            username = usernameInput.value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            gameId = gameIdInput.value.trim().toUpperCase();
+            if (gameId.length !== 6) {
+                alert('Please enter a valid 6-character Game ID');
+                return;
+            }
+            
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            gameRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    alert('Game not found. Please check the Game ID.');
+                    return;
+                }
+                
+                if (data.gameStarted) {
+                    alert('Game has already started.');
+                    return;
+                }
+                
+                // Determine player ID
+                const players = data.players || {};
+                let newPlayerId;
+                
+                if (!players.player1) {
+                    newPlayerId = 'player1';
+                } else if (!players.player2) {
+                    newPlayerId = 'player2';
+                } else if (!players.player3) {
+                    newPlayerId = 'player3';
+                } else if (!players.player4) {
+                    newPlayerId = 'player4';
+                } else {
+                    // For custom games, generate a unique player ID
+                    newPlayerId = `player${Object.keys(players).length + 1}`;
+                }
+                
+                playerId = newPlayerId;
+                isHost = false;
+                
+                // Add player to the game
+                gameRef.child(`players/${playerId}`).set(true);
+                gameRef.child(`playerNames/${playerId}`).set(username);
+                gameRef.child(`playerAvatars/${playerId}`).set(myAvatar);
+                
+                // Update local variables
+                playerNames = data.playerNames || {};
+                playerNames[playerId] = username;
+                playerAvatars = data.playerAvatars || {};
+                playerAvatars[playerId] = myAvatar;
+                
+                displayGameId.textContent = gameId;
+                
+                // Show waiting room
+                showWaitingModal();
+                updateJoinedPlayersList();
+                
+                // Listen for game start
+                gameRef.child('gameStarted').on('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        // Game started, initialize from Firebase
+                        gameRef.once('value').then((snapshot) => {
+                            const data = snapshot.val();
+                            initializeFromFirebase(data);
+                            hideWaitingModal();
+                            mainMenu.style.display = 'none';
+                            gameContainer.style.display = 'block';
+                            
+                            // Show announcement
+                            const firstPlayerName = playerNames[data.currentPlayerTurn] || 'Player 1';
+                            showAnnouncement(`${firstPlayerName}'s turn first!`);
+                            
+                            // Start music
+                            if (isMusicOn) {
+                                backgroundMusic.volume = 0.3;
+                                backgroundMusic.play();
+                            }
+                            
+                            // Listen for game state changes
+                            setupGameListeners();
+                        });
+                    }
+                });
+            });
+        }
+
+        // Set up Firebase listeners for game state changes
+        function setupGameListeners() {
+            if (gameMode === 'single') return;
+            
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            gameRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    // Game was deleted (probably ended)
+                    gameOverMessage.textContent = 'The host ended the game.';
+                    showGameOverModal();
+                    return;
+                }
+                
+                // Update game state
+                gameBoard = data.board;
+                revealedCells = data.revealed || Array(gridSize).fill().map(() => Array(gridSize).fill(false));
+                currentPlayerTurn = data.currentPlayerTurn || 'player1';
+                playerScores = data.playerScores || {};
+                playerNames = data.playerNames || {};
+                playerAvatars = data.playerAvatars || {};
+                hasPlayedThisTurn = data.hasPlayedThisTurn || false;
+                goldCollected = data.goldCollected || 0;
+                bombsHit = data.bombsHit || 0;
+                
+                // Update UI
+                currentGoldElement.textContent = goldCount;
+                goldCollectedElement.textContent = goldCollected;
+                bombsHitElement.textContent = bombsHit;
+                
+                // Update turn indicator
+                if (currentPlayerTurn === playerId) {
+                    if (hasPlayedThisTurn) {
+                        turnIndicator.textContent = 'End your turn by clicking a cell';
+                    } else {
+                        turnIndicator.textContent = 'Your turn! Click a cell';
+                    }
+                } else {
+                    turnIndicator.textContent = `Waiting for ${playerNames[currentPlayerTurn]}...`;
+                }
+                
+                // Re-render the board and player info
+                renderBoard();
+                renderPlayerInfo();
+                
+                // Check if game ended
+                let goldRemaining = 0;
+                for (let i = 0; i < gridSize; i++) {
+                    for (let j = 0; j < gridSize; j++) {
+                        if (gameBoard[i][j] === 'gold' && !revealedCells[i][j]) {
+                            goldRemaining++;
+                        }
+                    }
+                }
+                
+                if (goldRemaining === 0) {
+                    endGame();
+                }
+            });
+        }
+
+        // Quit the current game
+        function quitGame() {
+            if (confirm('Are you sure you want to quit the game?')) {
+                // Remove player from Firebase if multiplayer
+                if (gameMode !== 'single') {
+                    const gameRef = database.ref(`games/${gameId}`);
+                    gameRef.child(`players/${playerId}`).remove();
+                    
+                    // If host, remove the entire game
+                    if (isHost) {
+                        gameRef.remove();
+                    }
+                }
+                
+                // Return to main menu
+                returnToMainMenu();
+            }
+        }
+
+        // Return to main menu
+        function returnToMainMenu() {
+            mainMenu.style.display = 'block';
+            gameContainer.style.display = 'none';
+            hideWaitingModal();
+            hideGameOverModal();
+            
+            // Stop music
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+        }
+
+        // Toggle sound
+        function toggleSound() {
+            isSoundOn = !isSoundOn;
+            soundToggle.textContent = isSoundOn ? '🔊' : '🔇';
+        }
+
+        // Toggle music
+        function toggleMusic() {
+            isMusicOn = !isMusicOn;
+            if (isMusicOn) {
+                backgroundMusic.play();
+            } else {
+                backgroundMusic.pause();
+            }
+        }
+
+        // Event listeners
+        createGameBtn.addEventListener('click', createGame);
+        joinGameBtn.addEventListener('click', joinGame);
+        cancelWaitingBtn.addEventListener('click', returnToMainMenu);
+        quitGameBtn.addEventListener('click', quitGame);
+        playAgainBtn.addEventListener('click', () => {
+            hideGameOverModal();
+            createGame();
+        });
+        mainMenuBtn.addEventListener('click', returnToMainMenu);
+        soundToggle.addEventListener('click', toggleSound);
+        startGameBtn.addEventListener('click', startGame);
+        
+        // Set default mode
+        document.querySelector('.game-mode-btn[data-mode="multi2"]').classList.add('selected');
+    </script>
+</body>
+</html>
