@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoveBridge Mini - LDR Couple App</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+    <style>
+        :root {
+            --primary: #FF6B8B;
+            --secondary: #FFA3B5;
+            --dark: #5E2B3D;
+            --light: #FFF2F5;
+            --accent: #FFD166;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: url('https://i.imgur.com/JYlZf3j.jpg') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            background-color: rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .heart {
+            position: absolute;
+            font-size: 20px;
+            color: var(--primary);
+            animation: float 3s ease-in-out infinite;
+            opacity: 0;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--primary);
+            font-size: 14px;
+        }
+        
+        .avatar-container {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+        }
+        
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: var(--secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .avatar::after {
+            content: '❤️';
+            position: absolute;
+            font-size: 20px;
+            bottom: -10px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+        }
+        
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: var(--dark);
+            font-weight: bold;
+            transition: all 0.3s;
+            flex: 1;
+            text-align: center;
+        }
+        
+        .tab.active {
+            color: var(--primary);
+            border-bottom: 3px solid var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--primary), var(--accent));
+        }
+        
+        .feature-title {
+            font-weight: bold;
+            color: var(--dark);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .feature-icon {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        
+        .feature-desc {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .love-meter {
+            height: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .love-progress {
+            height: 100%;
+            background: linear-gradient(to right, var(--secondary), var(--primary));
+            width: 70%;
+            border-radius: 10px;
+            transition: width 1s;
+            position: relative;
+        }
+        
+        .love-progress::after {
+            content: '70%';
+            position: absolute;
+            right: -30px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--dark);
+            font-weight: bold;
+        }
+        
+        .btn {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 107, 139, 0.3);
+            transition: all 0.3s;
+            display: inline-block;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(255, 107, 139, 0.4);
+        }
+        
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+        
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 15px;
+        }
+        
+        .message {
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            max-width: 80%;
+            word-wrap: break-word;
+            position: relative;
+        }
+        
+        .message.sent {
+            background: var(--primary);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .message.received {
+            background: var(--light);
+            color: var(--dark);
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message-time {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-top: 5px;
+            display: block;
+        }
+        
+        .input-group {
+            display: flex;
+            margin-top: 20px;
+        }
+        
+        .input-group input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #eee;
+            border-radius: 30px 0 0 30px;
+            outline: none;
+            font-size: 14px;
+        }
+        
+        .input-group button {
+            border-radius: 0 30px 30px 0;
+            padding: 0 20px;
+        }
+        
+        .date-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .date-option {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .date-option:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .date-option i {
+            font-size: 30px;
+            color: var(--primary);
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .premium-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(to right, #FFD166, #F4A261);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(244, 162, 97, 0.3);
+        }
+        
+        .countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--dark);
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .countdown span {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            line-height: 50px;
+            background: white;
+            border-radius: 50%;
+            margin: 0 5px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .task-checkbox {
+            margin-right: 10px;
+            accent-color: var(--primary);
+        }
+        
+        .task-text {
+            flex: 1;
+        }
+        
+        .task-completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        
+        .login-container {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        
+        .login-container h2 {
+            margin-bottom: 20px;
+            color: var(--dark);
+        }
+        
+        .login-btn {
+            background: #4285F4;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(66, 133, 244, 0.3);
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            margin: 10px;
+        }
+        
+        .login-btn i {
+            margin-right: 10px;
+            font-size: 20px;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(66, 133, 244, 0.4);
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        /* New Game Styles */
+        .game-category {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 15px;
+        }
+        
+        .game-category h4 {
+            color: var(--dark);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .game-category h4 i {
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .game-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .game-card i {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+        
+        .game-screen {
+            display: none;
+            padding: 20px;
+        }
+        
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .game-content {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            min-height: 300px;
+        }
+        
+        .game-option {
+            margin: 10px 0;
+            padding: 12px;
+            background: var(--light);
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        
+        .game-option:hover {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        /* Onboarding Styles */
+        .onboarding-container {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin: 15px 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--dark);
+            font-weight: bold;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 20px;
+            border: 2px solid var(--primary);
+            font-size: 16px;
+        }
+        
+        .photo-upload {
+            margin: 20px auto;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            position: relative;
+            border: 3px dashed var(--primary);
+        }
+        
+        .photo-upload img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        .photo-upload input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+        
+        .room-id-display {
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            margin: 20px 0;
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--dark);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .room-id-copy {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        
+        /* Animation for new messages */
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .new-message {
+            animation: popIn 0.3s ease-out;
+        }
+        
+        /* Responsive */
+        @media (max-width: 500px) {
+            .container {
+                border-radius: 0;
+                min-height: 100vh;
+            }
+            
+            .date-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab {
+                padding: 10px 5px;
+                font-size: 14px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container" id="app">
+        <!-- Onboarding Screen -->
+        <div class="onboarding-container" id="onboarding-screen">
+            <div class="logo">LoveBridge Mini</div>
+            <div class="subtitle">Create your love connection 💖</div>
+            
+            <div class="form-group">
+                <label for="user-name">Your Name</label>
+                <input type="text" id="user-name" placeholder="Enter your name">
+            </div>
+            
+            <div class="photo-upload" id="photo-upload">
+                <span id="upload-text">Tap to add photo</span>
+                <img id="profile-preview" style="display: none;">
+                <input type="file" id="profile-photo" accept="image/*">
+            </div>
+            
+            <div id="room-creation">
+                <button class="btn" onclick="createRoom()">
+                    <i class="fas fa-heart"></i> Create Love Room
+                </button>
+            </div>
+            
+            <div id="room-joining" style="display: none;">
+                <div class="form-group">
+                    <label for="room-id">Room ID</label>
+                    <input type="text" id="room-id" placeholder="Enter room ID">
+                </div>
+                <button class="btn" onclick="joinRoom()">
+                    <i class="fas fa-heart"></i> Join Love Room
+                </button>
+            </div>
+            
+            <div class="room-id-display" id="room-id-display" style="display: none;">
+                Your Room ID: <span id="room-id-text"></span>
+                <button class="room-id-copy" onclick="copyRoomId()">
+                    <i class="fas fa-copy"></i> Copy
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main App (Hidden Initially) -->
+        <div id="main-app" style="display: none;">
+            <header>
+                <div class="logo">LoveBridge Mini</div>
+                <div class="subtitle">Connected with <span id="partner-name">Partner</span> <span id="online-status">💤</span></div>
+            </header>
+            
+            <div class="avatar-container">
+                <div class="avatar" id="user-avatar">U</div>
+                <div class="avatar" id="partner-avatar">P</div>
+            </div>
+            
+            <div class="love-meter">
+                <div class="love-progress" id="love-progress"></div>
+            </div>
+            
+            <div class="tab-container">
+                <div class="tab active" onclick="switchTab('home')"><i class="fas fa-home"></i> Home</div>
+                <div class="tab" onclick="switchTab('games')"><i class="fas fa-gamepad"></i> Games</div>
+                <div class="tab" onclick="switchTab('chat')"><i class="fas fa-comments"></i> Chat</div>
+                <div class="tab" onclick="switchTab('memories')"><i class="fas fa-photo-video"></i> Memories</div>
+            </div>
+            
+            <!-- Home Tab -->
+            <div class="tab-content active" id="home-tab">
+                <div class="feature-card" onclick="sendInteraction('hug')">
+                    <div class="feature-title"><i class="fas fa-hands-helping feature-icon"></i> Send Hug</div>
+                    <div class="feature-desc">Virtual hug with animation</div>
+                </div>
+                
+                <div class="feature-card" onclick="showCountdown()">
+                    <div class="feature-title"><i class="far fa-calendar-alt feature-icon"></i> Next Meeting</div>
+                    <div class="feature-desc" id="meeting-text">No meeting scheduled yet</div>
+                    <div class="countdown" id="countdown" style="display: none;"></div>
+                </div>
+                
+                <div class="feature-card" onclick="sendInteraction('missyou')">
+                    <div class="feature-title"><i class="fas fa-heart-broken feature-icon"></i> I Miss You</div>
+                    <div class="feature-desc">Send a special notification</div>
+                </div>
+                
+                <div class="btn-group">
+                    <button class="btn" onclick="switchTab('games')"><i class="fas fa-dice"></i> Play Games</button>
+                    <button class="btn btn-outline" onclick="switchTab('memories')"><i class="fas fa-camera"></i> Our Moments</button>
+                </div>
+            </div>
+            
+            <!-- Games Tab -->
+            <div class="tab-content" id="games-tab">
+                <h3 style="text-align: center; margin: 15px 0; color: var(--dark);">Couple Games Collection</h3>
+                
+                <!-- Romantic Games -->
+                <div class="game-category">
+                    <h4><i class="fas fa-heart"></i> Romantic Connection</h4>
+                    <div class="game-grid">
+                        <div class="game-card" onclick="startGame('love_quiz')">
+                            <i class="fas fa-question-circle"></i>
+                            <div>Love Quiz</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('truth_dare')">
+                            <i class="fas fa-theater-masks"></i>
+                            <div>Truth or Dare</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('love_language')">
+                            <i class="fas fa-comment-dots"></i>
+                            <div>Love Language</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('memory_lane')">
+                            <i class="fas fa-memory"></i>
+                            <div>Memory Lane</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fun Challenges -->
+                <div class="game-category">
+                    <h4><i class="fas fa-laugh-squint"></i> Fun Challenges</h4>
+                    <div class="game-grid">
+                        <div class="game-card" onclick="startGame('emoji_story')">
+                            <i class="fas fa-smile"></i>
+                            <div>Emoji Story</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('pictionary')">
+                            <i class="fas fa-pencil-alt"></i>
+                            <div>Pictionary</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('song_lyrics')">
+                            <i class="fas fa-music"></i>
+                            <div>Song Challenge</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('charades')">
+                            <i class="fas fa-hand-paper"></i>
+                            <div>Charades</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Daily Connection -->
+                <div class="game-category">
+                    <h4><i class="fas fa-calendar-day"></i> Daily Connection</h4>
+                    <div class="game-grid">
+                        <div class="game-card" onclick="startGame('gratitude_journal')">
+                            <i class="fas fa-book-open"></i>
+                            <div>Gratitude Journal</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('daily_question')">
+                            <i class="fas fa-question"></i>
+                            <div>Daily Question</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('compliment_battle')">
+                            <i class="fas fa-trophy"></i>
+                            <div>Compliment Battle</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('wishlist')">
+                            <i class="fas fa-star"></i>
+                            <div>Shared Wishlist</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Creative Games -->
+                <div class="game-category">
+                    <h4><i class="fas fa-paint-brush"></i> Creative Games</h4>
+                    <div class="game-grid">
+                        <div class="game-card" onclick="startGame('collab_drawing')">
+                            <i class="fas fa-palette"></i>
+                            <div>Collaborative Drawing</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('photo_challenge')">
+                            <i class="fas fa-camera"></i>
+                            <div>Photo Challenge</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('meme_contest')">
+                            <i class="fas fa-grin-squint-tears"></i>
+                            <div>Meme Contest</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('playlist_exchange')">
+                            <i class="fas fa-headphones"></i>
+                            <div>Playlist Exchange</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Intellectual Games -->
+                <div class="game-category">
+                    <h4><i class="fas fa-brain"></i> Intellectual Games</h4>
+                    <div class="game-grid">
+                        <div class="game-card" onclick="startGame('riddle_exchange')">
+                            <i class="fas fa-question"></i>
+                            <div>Riddle Exchange</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('word_association')">
+                            <i class="fas fa-font"></i>
+                            <div>Word Association</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('trivia_night')">
+                            <i class="fas fa-trophy"></i>
+                            <div>Trivia Night</div>
+                        </div>
+                        <div class="game-card" onclick="startGame('story_continuation')">
+                            <i class="fas fa-book"></i>
+                            <div>Story Continuation</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- More games can be added here -->
+                <div class="btn-group">
+                    <button class="btn btn-outline" onclick="showAllGames()">
+                        <i class="fas fa-ellipsis-h"></i> Show All 50+ Games
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Chat Tab -->
+            <div class="tab-content" id="chat-tab">
+                <div class="chat-container" id="chat-messages">
+                    <!-- Messages will appear here -->
+                </div>
+                <div class="input-group">
+                    <input type="text" id="message-input" placeholder="Type a sweet message...">
+                    <button class="btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-outline" onclick="sendSticker('heart')">❤️</button>
+                    <button class="btn btn-outline" onclick="sendSticker('kiss')">😘</button>
+                    <button class="btn btn-outline" onclick="sendSticker('hug')">🫂</button>
+                    <button class="btn btn-outline" onclick="sendSticker('laugh')">😂</button>
+                </div>
+            </div>
+            
+            <!-- Memories Tab -->
+            <div class="tab-content" id="memories-tab">
+                <div class="feature-card" onclick="openMemoryAlbum()">
+                    <div class="feature-title"><i class="fas fa-photo-video feature-icon"></i> Photo Album</div>
+                    <div class="feature-desc">Our shared memories</div>
+                </div>
+                
+                <div class="feature-card" onclick="openLoveLetter()">
+                    <div class="feature-title"><i class="fas fa-envelope feature-icon"></i> Love Letters</div>
+                    <div class="feature-desc">Write sweet notes to each other</div>
+                </div>
+                
+                <div class="feature-card" onclick="showMilestones()">
+                    <div class="feature-title"><i class="fas fa-award feature-icon"></i> Milestones</div>
+                    <div class="feature-desc">Celebrate your relationship achievements</div>
+                </div>
+                
+                <div id="memory-grid" class="memory-grid">
+                    <!-- Memory items will be added here -->
+                </div>
+            </div>
+            
+            <!-- Game Screen (Hidden Initially) -->
+            <div id="game-screen" class="game-screen">
+                <!-- Game content will be loaded here dynamically -->
+            </div>
+            
+            <footer>
+                LoveBridge Mini © 2023 | Made with ❤️ for LDR couples
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAQVIvZvxmYdcriHR8j0ormGzNRjGD0_no",
+            authDomain: "online--suit.firebaseapp.com",
+            databaseURL: "https://online--suit-default-rtdb.firebaseio.com",
+            projectId: "online--suit",
+            storageBucket: "online--suit.firebasestorage.app",
+            messagingSenderId: "463840835705",
+            appId: "1:463840835705:web:f490fd49851c0afb8dfca8"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const storage = firebase.storage();
+        
+        // User data
+        let currentUser = {
+            id: '',
+            name: '',
+            photoUrl: '',
+            roomId: '',
+            role: '' // 'creator' or 'joiner'
+        };
+        
+        let partner = {
+            id: '',
+            name: '',
+            photoUrl: ''
+        };
+        
+        // Game data - 50+ games
+        const gameDatabase = {
+            // Romantic Games (10)
+            love_quiz: {
+                title: "Love Quiz",
+                description: "Test how well you know each other",
+                questions: [
+                    "What's your partner's favorite childhood memory?",
+                    "What would your partner's perfect day look like?",
+                    "What's your partner's love language?",
+                    "What's your partner's dream vacation destination?"
+                ],
+                play: function() {
+                    showGameScreen(`
+                        <h3>Love Quiz</h3>
+                        <p>Answer these questions about your partner, then compare answers!</p>
+                        <div id="quiz-questions"></div>
+                        <button class="btn" onclick="nextQuestion()">Next Question</button>
+                    `);
+                    currentQuestion = 0;
+                    showQuestion();
+                }
+            },
+            
+            truth_dare: {
+                title: "Truth or Dare",
+                description: "Spicy questions and fun challenges",
+                truths: [
+                    "What's the most embarrassing thing you've done for love?",
+                    "When did you first know you loved me?",
+                    "What's your secret fantasy about us?",
+                    "What's something you've never told me about yourself?"
+                ],
+                dares: [
+                    "Send a voice message singing our song",
+                    "Change your profile picture to our silliest selfie for 1 hour",
+                    "Tell me something you've never told anyone",
+                    "Share your screen and show me your photo gallery"
+                ],
+                play: function() {
+                    showGameScreen(`
+                        <h3>Truth or Dare</h3>
+                        <p>Choose truth for deep questions or dare for fun challenges!</p>
+                        <div class="btn-group">
+                            <button class="btn" onclick="getTruth()">Truth</button>
+                            <button class="btn" onclick="getDare()">Dare</button>
+                        </div>
+                        <div id="truth-dare-result" style="margin-top: 20px;"></div>
+                    `);
+                }
+            },
+            
+            love_language: {
+                title: "Love Language Test",
+                description: "Discover how you each express love",
+                questions: [
+                    "I feel most loved when my partner...",
+                    "When I'm stressed, I appreciate...",
+                    "The best gift from my partner would be...",
+                    "I feel closest to my partner when..."
+                ],
+                play: function() {
+                    showGameScreen(`
+                        <h3>Love Language Test</h3>
+                        <p>Discover how you each express and receive love</p>
+                        <div id="love-language-questions"></div>
+                        <button class="btn" onclick="nextLoveLanguageQuestion()">Next</button>
+                    `);
+                    currentQuestion = 0;
+                    showLoveLanguageQuestion();
+                }
+            },
+            
+            memory_lane: {
+                title: "Memory Lane",
+                description: "Recall your favorite moments together",
+                play: function() {
+                    showGameScreen(`
+                        <h3>Memory Lane</h3>
+                        <p>Take turns sharing your favorite memories together</p>
+                        <div id="memory-container"></div>
+                        <button class="btn" onclick="shareMemory()">Share a Memory</button>
+                    `);
+                }
+            },
+            
+            // Fun Challenges (10)
+            emoji_story: {
+                title: "Emoji Story",
+                description: "Create a story using only emojis",
+                play: function() {
+                    showGameScreen(`
+                        <h3>Emoji Story</h3>
+                        <p>Create a story using only emojis and let your partner guess</p>
+                        <textarea id="emoji-input" placeholder="Write your emoji story here..." rows="3"></textarea>
+                        <button class="btn" onclick="sendEmojiStory()">Send Story</button>
+                    `);
+                }
+            },
+            
+            pictionary: {
+                title: "Pictionary",
+                description: "Draw and guess together",
+                words: ["Sunset", "Kiss", "Adventure", "Home", "Dance"],
+                play: function() {
+                    showGameScreen(`
+                        <h3>Pictionary</h3>
+                        <p>Draw the word and have your partner guess!</p>
+                        <div id="pictionary-word" style="font-size: 24px; font-weight: bold; margin: 20px 0;"></div>
+                        <button class="btn" onclick="getPictionaryWord()">Get Word</button>
+                        <div style="margin-top: 20px;">
+                            <p>Use any drawing app and share your screen!</p>
+                        </div>
+                    `);
+                }
+            },
+            
+            // Add 40+ more games following the same pattern...
+            // Each with their own play() function and game logic
+            
+            // Daily Connection (10)
+            gratitude_journal: {
+                title: "Gratitude Journal",
+                description: "Share what you appreciate about each other",
+                play: function() {
+                    showGameScreen(`
+                        <h3>Gratitude Journal</h3>
+                        <p>Write something you appreciate about your partner today</p>
+                        <textarea id="gratitude-input" placeholder="I'm grateful for..." rows="3"></textarea>
+                        <button class="btn" onclick="shareGratitude()">Share</button>
+                        <div id="gratitude-entries" style="margin-top: 20px;"></div>
+                    `);
+                }
+            },
+            
+            // Creative Games (10)
+            collab_drawing: {
+                title: "Collaborative Drawing",
+                description: "Create art together",
+                play: function() {
+                    showGameScreen(`
+                        <h3>Collaborative Drawing</h3>
+                        <p>Take turns adding to a shared drawing</p>
+                        <div style="background: #f5f5f5; height: 200px; margin: 20px 0; display: flex; justify-content: center; align-items: center;">
+                            <p>Use any drawing app and share your screen!</p>
+                        </div>
+                        <button class="btn" onclick="startDrawingRound()">Start Round</button>
+                    `);
+                }
+            },
+            
+            // Intellectual Games (10)
+            riddle_exchange: {
+                title: "Riddle Exchange",
+                description: "Challenge each other with riddles",
+                riddles: [
+                    "What has keys but can't open locks?",
+                    "The more you take, the more you leave behind. What am I?",
+                    "What has a head, a tail, but no body?"
+                ],
+                answers: ["Piano", "Footsteps", "Coin"],
+                play: function() {
+                    showGameScreen(`
+                        <h3>Riddle Exchange</h3>
+                        <p>Take turns solving riddles!</p>
+                        <div id="riddle-container"></div>
+                        <button class="btn" onclick="getRiddle()">Get Riddle</button>
+                    `);
+                }
+            }
+            
+            // Continue adding more games to reach 50+
+        };
+
+        // Game state
+        let currentGame = null;
+        let currentQuestion = 0;
+        let gameScore = { user: 0, partner: 0 };
+
+        // DOM elements
+        const onboardingScreen = document.getElementById('onboarding-screen');
+        const mainApp = document.getElementById('main-app');
+        const profilePhotoInput = document.getElementById('profile-photo');
+        const profilePreview = document.getElementById('profile-preview');
+        const uploadText = document.getElementById('upload-text');
+
+        // Initialize the app
+        init();
+
+        function init() {
+            // Photo upload handler
+            profilePhotoInput.addEventListener('change', handlePhotoUpload);
+            
+            // Check for existing session
+            checkExistingSession();
+        }
+
+        function handlePhotoUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    profilePreview.src = event.target.result;
+                    profilePreview.style.display = 'block';
+                    uploadText.style.display = 'none';
+                    currentUser.photoUrl = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function checkExistingSession() {
+            // Check if user was already in a room
+            const savedRoomId = localStorage.getItem('ldr_roomId');
+            if (savedRoomId) {
+                // Try to reconnect
+                database.ref('rooms/' + savedRoomId).once('value').then(snapshot => {
+                    if (snapshot.exists()) {
+                        const roomData = snapshot.val();
+                        if (roomData.user1 && roomData.user2) {
+                            // Reconnect to existing room
+                            currentUser.roomId = savedRoomId;
+                            if (roomData.user1.id === localStorage.getItem('ldr_userId')) {
+                                currentUser.role = 'creator';
+                                partner = roomData.user2;
+                            } else {
+                                currentUser.role = 'joiner';
+                                partner = roomData.user1;
+                            }
+                            startApp();
+                        }
+                    }
+                });
+            }
+        }
+
+        function generateRoomId() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function createRoom() {
+            const userName = document.getElementById('user-name').value.trim();
+            if (!userName) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            currentUser.name = userName;
+            currentUser.id = generateUserId();
+            currentUser.roomId = generateRoomId();
+            currentUser.role = 'creator';
+            
+            // Show room ID to share
+            document.getElementById('room-id-text').textContent = currentUser.roomId;
+            document.getElementById('room-id-display').style.display = 'block';
+            document.getElementById('room-creation').style.display = 'none';
+            document.getElementById('room-joining').style.display = 'block';
+            
+            // Save to localStorage
+            localStorage.setItem('ldr_userId', currentUser.id);
+            localStorage.setItem('ldr_roomId', currentUser.roomId);
+            
+            // Upload photo if selected
+            if (profilePhotoInput.files[0]) {
+                uploadProfilePhoto().then(url => {
+                    currentUser.photoUrl = url;
+                    setupRoom();
+                });
+            } else {
+                setupRoom();
+            }
+        }
+
+        function joinRoom() {
+            const userName = document.getElementById('user-name').value.trim();
+            const roomId = document.getElementById('room-id').value.trim().toUpperCase();
+            
+            if (!userName || !roomId) {
+                alert('Please enter both your name and room ID');
+                return;
+            }
+            
+            currentUser.name = userName;
+            currentUser.id = generateUserId();
+            currentUser.roomId = roomId;
+            currentUser.role = 'joiner';
+            
+            // Save to localStorage
+            localStorage.setItem('ldr_userId', currentUser.id);
+            localStorage.setItem('ldr_roomId', currentUser.roomId);
+            
+            // Check if room exists
+            database.ref('rooms/' + roomId).once('value').then(snapshot => {
+                if (!snapshot.exists()) {
+                    alert('Room not found. Please check the ID.');
+                    return;
+                }
+                
+                // Upload photo if selected
+                if (profilePhotoInput.files[0]) {
+                    uploadProfilePhoto().then(url => {
+                        currentUser.photoUrl = url;
+                        joinExistingRoom(roomId);
+                    });
+                } else {
+                    joinExistingRoom(roomId);
+                }
+            });
+        }
+
+        function uploadProfilePhoto() {
+            return new Promise((resolve, reject) => {
+                const file = profilePhotoInput.files[0];
+                if (!file) resolve('');
+                
+                const storageRef = storage.ref('profile_photos/' + currentUser.id + '_' + Date.now());
+                const uploadTask = storageRef.put(file);
+                
+                uploadTask.on('state_changed', 
+                    null, 
+                    error => reject(error), 
+                    () => {
+                        uploadTask.snapshot.ref.getDownloadURL().then(url => {
+                            resolve(url);
+                        });
+                    }
+                );
+            });
+        }
+
+        function setupRoom() {
+            if (currentUser.role === 'creator') {
+                // Create new room in database
+                database.ref('rooms/' + currentUser.roomId).set({
+                    user1: {
+                        id: currentUser.id,
+                        name: currentUser.name,
+                        photoUrl: currentUser.photoUrl || '',
+                        online: true,
+                        lastActive: firebase.database.ServerValue.TIMESTAMP
+                    },
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                // Wait for partner to join
+                monitorPartnerConnection();
+            }
+        }
+
+        function joinExistingRoom(roomId) {
+            database.ref('rooms/' + roomId).once('value').then(snapshot => {
+                const roomData = snapshot.val();
+                
+                if (roomData.user2) {
+                    alert('This room already has two members');
+                    return;
+                }
+                
+                // Add user2 to the room
+                database.ref('rooms/' + roomId + '/user2').set({
+                    id: currentUser.id,
+                    name: currentUser.name,
+                    photoUrl: currentUser.photoUrl || '',
+                    online: true,
+                    lastActive: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                // Get partner info
+                partner = {
+                    id: roomData.user1.id,
+                    name: roomData.user1.name,
+                    photoUrl: roomData.user1.photoUrl
+                };
+                
+                // Start the app
+                startApp();
+                
+                // Notify user1 about the connection
+                sendSystemMessage(`${currentUser.name} has joined your love room!`);
+            });
+        }
+
+        function monitorPartnerConnection() {
+            const partnerRef = database.ref('rooms/' + currentUser.roomId + '/user2');
+            
+            partnerRef.on('value', snapshot => {
+                const user2Data = snapshot.val();
+                
+                if (user2Data) {
+                    // Partner has joined
+                    partner = {
+                        id: user2Data.id,
+                        name: user2Data.name,
+                        photoUrl: user2Data.photoUrl
+                    };
+                    
+                    // Start the app
+                    startApp();
+                    
+                    // Notify user2 about the connection
+                    sendSystemMessage(`You're now connected with ${partner.name}!`);
+                    
+                    // Stop monitoring
+                    partnerRef.off();
+                }
+            });
+        }
+
+        function startApp() {
+            onboardingScreen.style.display = 'none';
+            mainApp.style.display = 'block';
+            
+            // Update UI with user and partner info
+            document.getElementById('partner-name').textContent = partner.name;
+            
+            // Set avatars
+            const userAvatar = document.getElementById('user-avatar');
+            const partnerAvatar = document.getElementById('partner-avatar');
+            
+            userAvatar.textContent = currentUser.name.charAt(0);
+            if (currentUser.photoUrl) {
+                userAvatar.style.backgroundImage = `url(${currentUser.photoUrl})`;
+                userAvatar.textContent = '';
+            }
+            
+            partnerAvatar.textContent = partner.name.charAt(0);
+            if (partner.photoUrl) {
+                partnerAvatar.style.backgroundImage = `url(${partner.photoUrl})`;
+                partnerAvatar.textContent = '';
+            }
+            
+            // Initialize real-time features
+            setupRealtimeUpdates();
+            loadInitialData();
+        }
+
+        function setupRealtimeUpdates() {
+            // Listen for new messages
+            database.ref('messages/' + currentUser.roomId).on('child_added', snapshot => {
+                const message = snapshot.val();
+                
+                if (message.sender === 'system') {
+                    // System notification
+                    showNotification(message.text);
+                } else if (message.sender !== currentUser.id) {
+                    // Message from partner
+                    addMessage(partner.name, message.text, false, true);
+                }
+            });
+            
+            // Listen for partner's online status
+            database.ref('rooms/' + currentUser.roomId + '/' + (currentUser.role === 'creator' ? 'user2' : 'user1') + '/online').on('value', snapshot => {
+                const isOnline = snapshot.val();
+                const onlineStatusElement = document.getElementById('online-status');
+                onlineStatusElement.textContent = isOnline ? '💚 Online' : '💤 Offline';
+                
+                if (isOnline) {
+                    showNotification(`${partner.name} is now online`);
+                }
+            });
+            
+            // Update last active timestamp periodically
+            setInterval(() => {
+                database.ref('rooms/' + currentUser.roomId + '/' + (currentUser.role === 'creator' ? 'user1' : 'user2') + '/lastActive').set(
+                    firebase.database.ServerValue.TIMESTAMP
+                );
+            }, 30000);
+        }
+
+        function loadInitialData() {
+            // Load existing messages
+            database.ref('messages/' + currentUser.roomId).once('value').then(snapshot => {
+                snapshot.forEach(childSnapshot => {
+                    const message = childSnapshot.val();
+                    if (message.sender === currentUser.id) {
+                        addMessage(currentUser.name, message.text, true);
+                    } else if (message.sender === partner.id) {
+                        addMessage(partner.name, message.text, false);
+                    } else if (message.sender === 'system') {
+                        addMessage('System', message.text, false, false, true);
+                    }
+                });
+            });
+            
+            // Set initial love meter
+            updateLoveMeter(50);
+            
+            // Send welcome message
+            setTimeout(() => {
+                sendSystemMessage(`Welcome to your love room, ${currentUser.name} and ${partner.name}! ❤️`);
+            }, 1000);
+        }
+
+        function sendSystemMessage(text) {
+            database.ref('messages/' + currentUser.roomId).push().set({
+                sender: 'system',
+                text: text,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+
+        function showNotification(text) {
+            // Create a notification element
+            const notification = document.createElement('div');
+            notification.className = 'feature-card';
+            notification.innerHTML = `
+                <div class="feature-title">
+                    <i class="fas fa-bell feature-icon"></i> Notification
+                </div>
+                <div class="feature-desc">${text}</div>
+            `;
+            notification.style.animation = 'popIn 0.3s ease-out';
+            
+            // Add to home tab
+            const homeTab = document.getElementById('home-tab');
+            homeTab.insertBefore(notification, homeTab.firstChild);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+        }
+
+        function generateUserId() {
+            return 'user_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        function copyRoomId() {
+            const roomId = document.getElementById('room-id-text').textContent;
+            navigator.clipboard.writeText(roomId).then(() => {
+                alert('Room ID copied to clipboard! Share it with your partner.');
+            });
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        function createHearts() {
+            for (let i = 0; i < 10; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart';
+                heart.innerHTML = '❤️';
+                heart.style.left = Math.random() * 100 + 'vw';
+                heart.style.animationDelay = Math.random() * 3 + 's';
+                document.body.appendChild(heart);
+                
+                setTimeout(() => {
+                    heart.remove();
+                }, 3000);
+            }
+        }
+
+        function updateLoveMeter(percent) {
+            const progress = document.getElementById('love-progress');
+            progress.style.width = percent + '%';
+            progress.textContent = percent + '%';
+        }
+
+        function addMessage(sender, text, isSent, isNew = false, isSystem = false) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'} ${isNew ? 'new-message' : ''} ${isSystem ? 'system' : ''}`;
+            messageDiv.innerHTML = `
+                ${text}
+                <span class="message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            `;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const message = input.value.trim();
+            
+            if (message) {
+                // Save to Firebase
+                database.ref('messages/' + currentUser.roomId).push().set({
+                    sender: currentUser.id,
+                    text: message,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                // Add to local UI
+                addMessage(currentUser.name, message, true);
+                input.value = '';
+                
+                // Increase love meter
+                const current = parseInt(document.getElementById('love-progress').style.width);
+                if (current < 100) {
+                    updateLoveMeter(current + 1);
+                }
+            }
+        }
+
+        function sendSticker(type) {
+            const stickers = {
+                heart: '❤️',
+                kiss: '😘',
+                hug: '🫂',
+                flower: '🌹',
+                laugh: '😂'
+            };
+            
+            database.ref('messages/' + currentUser.roomId).push().set({
+                sender: currentUser.id,
+                text: stickers[type],
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            addMessage(currentUser.name, stickers[type], true);
+            
+            // Special effects
+            if (type === 'hug') {
+                createHearts();
+                updateLoveMeter(parseInt(document.getElementById('love-progress').style.width) + 3);
+                sendSystemMessage(`${currentUser.name} sent a virtual hug to ${partner.name}!`);
+            }
+        }
+
+        function sendInteraction(type) {
+            switch(type) {
+                case 'hug':
+                    createHearts();
+                    addMessage('You', 'Sent a virtual hug 🫂', true);
+                    setTimeout(() => {
+                        addMessage(partner.name, 'Received your hug! 🥰', false);
+                        updateLoveMeter(parseInt(document.getElementById('love-progress').style.width) + 2);
+                    }, 1500);
+                    break;
+                case 'missyou':
+                    createHearts();
+                    addMessage('You', 'Sent a "I miss you" notification 💔', true);
+                    setTimeout(() => {
+                        addMessage(partner.name, 'I miss you too baby! ❤️', false);
+                        updateLoveMeter(parseInt(document.getElementById('love-progress').style.width) + 1);
+                    }, 2000);
+                    break;
+            }
+        }
+
+        function showCountdown() {
+            const meetingText = document.getElementById('meeting-text');
+            const countdown = document.getElementById('countdown');
+            
+            if (countdown.style.display === 'none') {
+                // Set a sample date (2 weeks from now)
+                const targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() + 14);
+                
+                meetingText.textContent = 'Next meeting: ' + targetDate.toLocaleDateString();
+                countdown.style.display = 'block';
+                
+                // Update countdown every second
+                setInterval(() => {
+                    const now = new Date();
+                    const diff = targetDate - now;
+                    
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    countdown.innerHTML = `
+                        <span>${days}d</span>
+                        <span>${hours}h</span>
+                        <span>${minutes}m</span>
+                        <span>${seconds}s</span>
+                    `;
+                }, 1000);
+            } else {
+                countdown.style.display = 'none';
+            }
+        }
+
+        function openMemoryAlbum() {
+            alert('Memory album would show your shared photos here');
+        }
+
+        function openLoveLetter() {
+            alert('Love letter editor would open here');
+        }
+
+        function showMilestones() {
+            alert('Milestones tracker would show here');
+        }
+
+        // Game Functions
+        function startGame(gameId) {
+            currentGame = gameDatabase[gameId];
+            if (currentGame) {
+                currentGame.play();
+                sendSystemMessage(`${currentUser.name} started ${currentGame.title} game!`);
+            }
+        }
+
+        function showGameScreen(content) {
+            document.getElementById('games-tab').style.display = 'none';
+            const gameScreen = document.getElementById('game-screen');
+            gameScreen.style.display = 'block';
+            gameScreen.innerHTML = `
+                <div class="game-header">
+                    <button class="btn btn-outline" onclick="exitGame()">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <h3>${currentGame.title}</h3>
+                </div>
+                <div class="game-content">
+                    ${content}
+                </div>
+            `;
+        }
+
+        function exitGame() {
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('games-tab').style.display = 'block';
+            currentGame = null;
+        }
+
+        // Specific Game Functions
+        function showQuestion() {
+            if (currentQuestion < currentGame.questions.length) {
+                document.getElementById('quiz-questions').innerHTML = `
+                    <div class="feature-card">
+                        <div class="feature-title">Question ${currentQuestion + 1}</div>
+                        <div class="feature-desc">${currentGame.questions[currentQuestion]}</div>
+                        <textarea placeholder="Your answer..." rows="3" style="width: 100%; margin-top: 10px;"></textarea>
+                    </div>
+                `;
+            } else {
+                document.getElementById('quiz-questions').innerHTML = `
+                    <div class="feature-card">
+                        <div class="feature-title">Quiz Completed!</div>
+                        <div class="feature-desc">Compare your answers with your partner</div>
+                    </div>
+                `;
+            }
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            showQuestion();
+        }
+
+        function getTruth() {
+            const randomTruth = currentGame.truths[Math.floor(Math.random() * currentGame.truths.length)];
+            document.getElementById('truth-dare-result').innerHTML = `
+                <div class="feature-card">
+                    <div class="feature-title">Truth</div>
+                    <div class="feature-desc">${randomTruth}</div>
+                </div>
+            `;
+            sendSystemMessage(`${currentUser.name} got a truth: ${randomTruth}`);
+        }
+
+        function getDare() {
+            const randomDare = currentGame.dares[Math.floor(Math.random() * currentGame.dares.length)];
+            document.getElementById('truth-dare-result').innerHTML = `
+                <div class="feature-card">
+                    <div class="feature-title">Dare</div>
+                    <div class="feature-desc">${randomDare}</div>
+                </div>
+            `;
+            sendSystemMessage(`${currentUser.name} got a dare: ${randomDare}`);
+        }
+
+        function showAllGames() {
+            alert('This would show all 50+ games in a scrollable list');
+            // Implementation would show all games with search/filter
+        }
+
+        // Set online status when app starts/closes
+        window.addEventListener('beforeunload', () => {
+            database.ref('rooms/' + currentUser.roomId + '/' + (currentUser.role === 'creator' ? 'user1' : 'user2') + '/online').set(false);
+        });
+
+        // Initialize online status
+        if (currentUser.roomId) {
+            const userRef = database.ref('rooms/' + currentUser.roomId + '/' + (currentUser.role === 'creator' ? 'user1' : 'user2'));
+            userRef.update({
+                online: true,
+                lastActive: firebase.database.ServerValue.TIMESTAMP
+            });
+        }
+    </script>
+</body>
+</html>
