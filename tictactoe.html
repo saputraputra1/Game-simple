@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe Multiplayer</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        :root {
+            --primary: #4285F4;
+            --secondary: #34A853;
+            --accent: #EA4335;
+            --dark: #202124;
+            --light: #f8f9fa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: var(--dark);
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #3367d6;
+        }
+
+        .btn-secondary {
+            background-color: #5f6368;
+        }
+
+        .btn-secondary:hover {
+            background-color: #4d5257;
+        }
+
+        .btn-success {
+            background-color: var(--secondary);
+        }
+
+        .btn-success:hover {
+            background-color: #2d9246;
+        }
+
+        .game-id {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: var(--primary);
+            letter-spacing: 3px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+
+        .player {
+            padding: 15px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            flex: 1;
+            margin: 0 5px;
+            text-align: center;
+        }
+
+        .player.active {
+            background-color: #e8f0fe;
+            border: 2px solid var(--primary);
+        }
+
+        .player-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+            border: 3px solid #ddd;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 48px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .cell:hover {
+            background: #f8f9fa;
+        }
+
+        .cell.x {
+            color: var(--primary);
+        }
+
+        .cell.o {
+            color: var(--accent);
+        }
+
+        .turn-indicator {
+            font-size: 18px;
+            margin: 15px 0;
+            font-weight: 600;
+        }
+
+        .winner {
+            color: var(--secondary);
+            font-weight: bold;
+            font-size: 24px;
+            margin: 20px 0;
+        }
+
+        .loading {
+            margin: 20px 0;
+        }
+
+        .avatar-upload {
+            margin: 15px 0;
+        }
+
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #ddd;
+            margin: 10px auto;
+            display: block;
+        }
+
+        .rematch-request {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="mainMenu">
+        <h1>Tic Tac Toe Multiplayer</h1>
+        <div class="form-group">
+            <label for="usernameInput">Username</label>
+            <input type="text" id="usernameInput" placeholder="Enter your username" maxlength="12">
+        </div>
+        
+        <div class="avatar-upload">
+            <img id="avatarPreview" class="avatar-preview" src="https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png" alt="Profile Picture">
+            <input type="file" id="avatarInput" accept="image/*" style="display: none;">
+            <button class="btn-secondary" onclick="document.getElementById('avatarInput').click()">Choose Avatar</button>
+        </div>
+        
+        <button id="createGameBtn">Create New Game</button>
+        
+        <div style="margin: 20px 0; text-align: center;">OR</div>
+        
+        <div class="form-group">
+            <label for="gameIdInput">Join Existing Game</label>
+            <input type="text" id="gameIdInput" placeholder="Enter Game ID">
+        </div>
+        <button id="joinGameBtn" class="btn-secondary">Join Game</button>
+    </div>
+
+    <div class="container" id="gameContainer" style="display: none;">
+        <h1>Tic Tac Toe</h1>
+        <div class="player-info" id="playerInfo">
+            <!-- Players will be added here -->
+        </div>
+        <div class="turn-indicator" id="turnIndicator">Your turn!</div>
+        <div class="game-board" id="gameBoard">
+            <!-- Cells will be added here -->
+        </div>
+        <div class="game-id">Game ID: <span id="displayGameId"></span></div>
+        <div class="rematch-request" id="rematchRequest">
+            <p id="rematchText"></p>
+            <button id="acceptRematchBtn" class="btn-success">Accept Rematch</button>
+            <button id="declineRematchBtn" class="btn-secondary">Decline</button>
+        </div>
+        <button id="rematchBtn" style="display: none;">Request Rematch</button>
+        <button id="quitGameBtn" class="btn-secondary">Quit Game</button>
+    </div>
+
+    <div class="modal" id="waitingModal">
+        <div class="modal-content">
+            <h2>Waiting for Player</h2>
+            <p>Share this Game ID with your friend:</p>
+            <div class="game-id" id="waitingGameId"></div>
+            <div class="loading">Waiting for opponent to join...</div>
+            <button id="cancelWaitingBtn" class="btn-secondary">Cancel</button>
+        </div>
+    </div>
+
+    <div class="modal" id="gameOverModal">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            <div class="winner" id="winnerMessage"></div>
+            <button id="rematchModalBtn">Request Rematch</button>
+            <button id="mainMenuBtn" class="btn-secondary">Main Menu</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCixqJ_eDJ0vscvsI_Z1Th10FEfKi0hdx8",
+            authDomain: "online--suit.firebaseapp.com",
+            databaseURL: "https://online--suit-default-rtdb.firebaseio.com",
+            projectId: "online--suit",
+            storageBucket: "online--suit.firebasestorage.app",
+            messagingSenderId: "463840835705",
+            appId: "1:463840835705:web:f490fd49851c0afb8dfca8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Game variables
+        let gameId;
+        let playerId;
+        let playerSymbol;
+        let currentPlayerTurn;
+        let gameBoard = ['', '', '', '', '', '', '', '', ''];
+        let playerNames = {};
+        let playerAvatars = {};
+        let isHost = false;
+        let username = '';
+        let myAvatar = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+        let rematchRequested = false;
+        let opponentRematchStatus = false;
+
+        // DOM elements
+        const mainMenu = document.getElementById('mainMenu');
+        const gameContainer = document.getElementById('gameContainer');
+        const createGameBtn = document.getElementById('createGameBtn');
+        const joinGameBtn = document.getElementById('joinGameBtn');
+        const gameIdInput = document.getElementById('gameIdInput');
+        const usernameInput = document.getElementById('usernameInput');
+        const waitingModal = document.getElementById('waitingModal');
+        const waitingGameId = document.getElementById('waitingGameId');
+        const cancelWaitingBtn = document.getElementById('cancelWaitingBtn');
+        const gameBoardElement = document.getElementById('gameBoard');
+        const displayGameId = document.getElementById('displayGameId');
+        const playerInfoElement = document.getElementById('playerInfo');
+        const turnIndicator = document.getElementById('turnIndicator');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const winnerMessage = document.getElementById('winnerMessage');
+        const rematchModalBtn = document.getElementById('rematchModalBtn');
+        const mainMenuBtn = document.getElementById('mainMenuBtn');
+        const quitGameBtn = document.getElementById('quitGameBtn');
+        const avatarInput = document.getElementById('avatarInput');
+        const avatarPreview = document.getElementById('avatarPreview');
+        const rematchBtn = document.getElementById('rematchBtn');
+        const rematchRequest = document.getElementById('rematchRequest');
+        const rematchText = document.getElementById('rematchText');
+        const acceptRematchBtn = document.getElementById('acceptRematchBtn');
+        const declineRematchBtn = document.getElementById('declineRematchBtn');
+
+        // Handle avatar upload
+        avatarInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    avatarPreview.src = event.target.result;
+                    myAvatar = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Initialize game board UI
+        function initializeBoardUI() {
+            gameBoardElement.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                cell.addEventListener('click', () => handleCellClick(i));
+                gameBoardElement.appendChild(cell);
+            }
+        }
+
+        // Render player info
+        function renderPlayerInfo() {
+            playerInfoElement.innerHTML = '';
+            
+            Object.keys(playerNames).forEach(id => {
+                const player = document.createElement('div');
+                player.className = 'player';
+                player.id = id;
+                
+                const avatar = document.createElement('img');
+                avatar.className = 'player-avatar';
+                avatar.src = playerAvatars[id] || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png';
+                
+                const name = document.createElement('div');
+                name.textContent = playerNames[id];
+                
+                const symbol = document.createElement('div');
+                symbol.textContent = id === 'player1' ? 'X' : 'O';
+                symbol.style.fontWeight = 'bold';
+                symbol.style.fontSize = '24px';
+                symbol.style.color = id === 'player1' ? '#4285F4' : '#EA4335';
+                
+                player.appendChild(avatar);
+                player.appendChild(name);
+                player.appendChild(symbol);
+                
+                // Highlight active player
+                if (currentPlayerTurn === id) {
+                    player.classList.add('active');
+                }
+                
+                playerInfoElement.appendChild(player);
+            });
+        }
+
+        // Update board UI
+        function updateBoardUI() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach((cell, index) => {
+                cell.textContent = '';
+                cell.classList.remove('x', 'o');
+                
+                if (gameBoard[index] === 'X') {
+                    cell.textContent = 'X';
+                    cell.classList.add('x');
+                } else if (gameBoard[index] === 'O') {
+                    cell.textContent = 'O';
+                    cell.classList.add('o');
+                }
+            });
+        }
+
+        // Handle cell click
+        function handleCellClick(index) {
+            if (gameBoard[index] !== '' || currentPlayerTurn !== playerId) return;
+            
+            // Update local board
+            gameBoard[index] = playerSymbol;
+            
+            // Update UI
+            updateBoardUI();
+            
+            // Check for winner
+            const winner = checkWinner();
+            if (winner) {
+                endGame(winner);
+                return;
+            }
+            
+            // Check for draw
+            if (!gameBoard.includes('')) {
+                endGame('draw');
+                return;
+            }
+            
+            // Switch turns
+            currentPlayerTurn = currentPlayerTurn === 'player1' ? 'player2' : 'player1';
+            updateTurnIndicator();
+            
+            // Update Firebase
+            updateGameState();
+        }
+
+        // Check for winner
+        function checkWinner() {
+            const winPatterns = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+                [0, 4, 8], [2, 4, 6]             // diagonals
+            ];
+            
+            for (const pattern of winPatterns) {
+                const [a, b, c] = pattern;
+                if (gameBoard[a] && gameBoard[a] === gameBoard[b] && gameBoard[a] === gameBoard[c]) {
+                    return gameBoard[a] === 'X' ? 'player1' : 'player2';
+                }
+            }
+            
+            return null;
+        }
+
+        // Update turn indicator
+        function updateTurnIndicator() {
+            if (currentPlayerTurn === playerId) {
+                turnIndicator.textContent = 'Your turn!';
+            } else {
+                turnIndicator.textContent = `Waiting for ${playerNames[currentPlayerTurn]}...`;
+            }
+        }
+
+        // End the game
+        function endGame(winner) {
+            let message;
+            if (winner === 'draw') {
+                message = "It's a draw!";
+            } else if (winner === playerId) {
+                message = `You win! ${playerNames[winner]} wins!`;
+            } else {
+                message = `${playerNames[winner]} wins!`;
+            }
+            
+            winnerMessage.textContent = message;
+            showGameOverModal();
+            
+            // Show rematch button
+            rematchBtn.style.display = 'block';
+            
+            // Listen for rematch requests
+            setupRematchListener();
+        }
+
+        // Update game state in Firebase
+        function updateGameState() {
+            const gameRef = database.ref(`games/${gameId}`);
+            gameRef.update({
+                board: gameBoard,
+                currentPlayerTurn: currentPlayerTurn
+            });
+        }
+
+        // Show waiting modal
+        function showWaitingModal() {
+            waitingModal.style.display = 'flex';
+            waitingGameId.textContent = gameId;
+        }
+
+        // Hide waiting modal
+        function hideWaitingModal() {
+            waitingModal.style.display = 'none';
+        }
+
+        // Show game over modal
+        function showGameOverModal() {
+            gameOverModal.style.display = 'flex';
+        }
+
+        // Hide game over modal
+        function hideGameOverModal() {
+            gameOverModal.style.display = 'none';
+        }
+
+        // Generate a random game ID
+        function generateGameId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < 6; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        // Create a new game
+        function createGame() {
+            username = usernameInput.value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            gameId = generateGameId();
+            isHost = true;
+            playerId = 'player1';
+            playerSymbol = 'X';
+            currentPlayerTurn = 'player1';
+            
+            // Set player info
+            playerNames = {
+                [playerId]: username
+            };
+            playerAvatars = {
+                [playerId]: myAvatar
+            };
+            
+            displayGameId.textContent = gameId;
+            
+            // Show waiting room
+            showWaitingModal();
+            
+            // Create game in Firebase
+            const gameRef = database.ref(`games/${gameId}`);
+            gameRef.set({
+                board: gameBoard,
+                player1: username,
+                player1Avatar: myAvatar,
+                player2: null,
+                player2Avatar: null,
+                currentPlayerTurn: currentPlayerTurn,
+                gameStarted: false,
+                rematchRequested: false,
+                rematchAccepted: false
+            });
+            
+            // Listen for player 2 joining
+            gameRef.child('player2').on('value', (snapshot) => {
+                const player2 = snapshot.val();
+                if (player2) {
+                    // Player 2 joined, get their avatar
+                    gameRef.child('player2Avatar').once('value', (avatarSnapshot) => {
+                        playerNames['player2'] = player2;
+                        playerAvatars['player2'] = avatarSnapshot.val();
+                        
+                        // Start the game
+                        gameRef.update({ gameStarted: true });
+                        
+                        // Initialize game
+                        initializeGame();
+                        hideWaitingModal();
+                        mainMenu.style.display = 'none';
+                        gameContainer.style.display = 'block';
+                        
+                        // Listen for game state changes
+                        setupGameListeners();
+                    });
+                }
+            });
+        }
+
+        // Join an existing game
+        function joinGame() {
+            username = usernameInput.value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+            
+            gameId = gameIdInput.value.trim().toUpperCase();
+            if (gameId.length !== 6) {
+                alert('Please enter a valid 6-character Game ID');
+                return;
+            }
+            
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            gameRef.once('value').then((snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    alert('Game not found. Please check the Game ID.');
+                    return;
+                }
+                
+                if (data.gameStarted) {
+                    alert('Game has already started.');
+                    return;
+                }
+                
+                if (data.player2) {
+                    alert('Game is already full.');
+                    return;
+                }
+                
+                // Join as player 2
+                playerId = 'player2';
+                playerSymbol = 'O';
+                isHost = false;
+                
+                // Update game in Firebase
+                gameRef.update({
+                    player2: username,
+                    player2Avatar: myAvatar
+                });
+                
+                // Get player 1 info
+                playerNames = {
+                    player1: data.player1,
+                    player2: username
+                };
+                playerAvatars = {
+                    player1: data.player1Avatar,
+                    player2: myAvatar
+                };
+                
+                displayGameId.textContent = gameId;
+                
+                // Show waiting room
+                showWaitingModal();
+                
+                // Listen for game start
+                gameRef.child('gameStarted').on('value', (snapshot) => {
+                    if (snapshot.val() === true) {
+                        // Game started, initialize from Firebase
+                        gameRef.once('value').then((snapshot) => {
+                            const data = snapshot.val();
+                            gameBoard = data.board || ['', '', '', '', '', '', '', '', ''];
+                            currentPlayerTurn = data.currentPlayerTurn || 'player1';
+                            
+                            initializeGame();
+                            hideWaitingModal();
+                            mainMenu.style.display = 'none';
+                            gameContainer.style.display = 'block';
+                            
+                            // Listen for game state changes
+                            setupGameListeners();
+                        });
+                    }
+                });
+            });
+        }
+
+        // Initialize game
+        function initializeGame() {
+            initializeBoardUI();
+            renderPlayerInfo();
+            updateBoardUI();
+            updateTurnIndicator();
+            
+            // Hide rematch button initially
+            rematchBtn.style.display = 'none';
+            rematchRequest.style.display = 'none';
+        }
+
+        // Set up Firebase listeners for game state changes
+        function setupGameListeners() {
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            gameRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) {
+                    // Game was deleted (probably ended)
+                    winnerMessage.textContent = 'The host ended the game.';
+                    showGameOverModal();
+                    return;
+                }
+                
+                // Update game state
+                gameBoard = data.board || ['', '', '', '', '', '', '', '', ''];
+                currentPlayerTurn = data.currentPlayerTurn || 'player1';
+                
+                // Update UI
+                updateBoardUI();
+                updateTurnIndicator();
+                
+                // Check for winner
+                const winner = checkWinner();
+                if (winner) {
+                    endGame(winner);
+                } else if (!gameBoard.includes('')) {
+                    endGame('draw');
+                }
+            });
+        }
+
+        // Set up rematch listener
+        function setupRematchListener() {
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            // Listen for rematch requests
+            gameRef.child('rematchRequested').on('value', (snapshot) => {
+                const requested = snapshot.val();
+                if (requested && !rematchRequested) {
+                    // Opponent requested rematch
+                    rematchText.textContent = `${playerNames[playerId === 'player1' ? 'player2' : 'player1']} wants a rematch!`;
+                    rematchRequest.style.display = 'block';
+                }
+            });
+            
+            // Listen for rematch acceptance
+            gameRef.child('rematchAccepted').on('value', (snapshot) => {
+                const accepted = snapshot.val();
+                if (accepted && rematchRequested) {
+                    // Both players accepted rematch - start new game
+                    startRematch();
+                }
+            });
+        }
+
+        // Request a rematch
+        function requestRematch() {
+            const gameRef = database.ref(`games/${gameId}`);
+            rematchRequested = true;
+            gameRef.update({
+                rematchRequested: true,
+                rematchAccepted: false
+            });
+            
+            rematchBtn.style.display = 'none';
+            rematchText.textContent = 'Waiting for opponent to accept rematch...';
+            rematchRequest.style.display = 'block';
+        }
+
+        // Accept rematch
+        function acceptRematch() {
+            const gameRef = database.ref(`games/${gameId}`);
+            gameRef.update({
+                rematchAccepted: true
+            });
+            
+            rematchRequest.style.display = 'none';
+        }
+
+        // Decline rematch
+        function declineRematch() {
+            rematchRequest.style.display = 'none';
+        }
+
+        // Start a rematch
+        function startRematch() {
+            const gameRef = database.ref(`games/${gameId}`);
+            
+            // Reset game state
+            gameBoard = ['', '', '', '', '', '', '', '', ''];
+            currentPlayerTurn = 'player1';
+            rematchRequested = false;
+            opponentRematchStatus = false;
+            
+            // Update Firebase
+            gameRef.update({
+                board: gameBoard,
+                currentPlayerTurn: currentPlayerTurn,
+                rematchRequested: false,
+                rematchAccepted: false,
+                gameStarted: true
+            });
+            
+            // Update UI
+            updateBoardUI();
+            updateTurnIndicator();
+            hideGameOverModal();
+            rematchBtn.style.display = 'none';
+            rematchRequest.style.display = 'none';
+        }
+
+        // Quit the current game
+        function quitGame() {
+            if (confirm('Are you sure you want to quit the game?')) {
+                // Remove game from Firebase
+                const gameRef = database.ref(`games/${gameId}`);
+                gameRef.remove();
+                
+                // Return to main menu
+                returnToMainMenu();
+            }
+        }
+
+        // Return to main menu
+        function returnToMainMenu() {
+            // Remove game from Firebase if host
+            if (isHost) {
+                const gameRef = database.ref(`games/${gameId}`);
+                gameRef.remove();
+            }
+            
+            mainMenu.style.display = 'block';
+            gameContainer.style.display = 'none';
+            hideWaitingModal();
+            hideGameOverModal();
+        }
+
+        // Event listeners
+        createGameBtn.addEventListener('click', createGame);
+        joinGameBtn.addEventListener('click', joinGame);
+        cancelWaitingBtn.addEventListener('click', returnToMainMenu);
+        quitGameBtn.addEventListener('click', quitGame);
+        rematchModalBtn.addEventListener('click', () => {
+            hideGameOverModal();
+            requestRematch();
+        });
+        mainMenuBtn.addEventListener('click', returnToMainMenu);
+        rematchBtn.addEventListener('click', requestRematch);
+        acceptRematchBtn.addEventListener('click', acceptRematch);
+        declineRematchBtn.addEventListener('click', declineRematch);
+    </script>
+</body>
+</html>
